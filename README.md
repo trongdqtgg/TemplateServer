@@ -69,9 +69,10 @@ lưu mẫu, ghi thao tác, chẩn đoán ô bị lỗi).
    `form-mau-server` bằng tên kho.
 4. Tạo token: GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
    → chỉ chọn kho phát hành → quyền **Contents: Read and write**.
-5. Tạo file `gh-token.txt` cạnh `build-and-publish.bat`, dán token vào dòng đầu, lưu lại.
+5. Chạy `build-and-publish.bat` lần đầu: script hỏi token, bạn dán vào (chuột phải hoặc Ctrl+V; ký tự
+   bị ẩn khi gõ). Script kiểm tra token với GitHub rồi hỏi có lưu vào `gh-token.txt` để lần sau khỏi nhập không.
    **Không** dán token vào file `.bat`, không gửi file `gh-token.txt` cho ai, không đưa lên GitHub
-   (đã có sẵn trong `.gitignore`).
+   (đã có sẵn trong `.gitignore`). Token hết hạn hoặc bị thu hồi thì script báo và cho nhập token mới.
 
 ### Mỗi lần phát hành
 Chạy `build-and-publish.bat` → chọn **Y** để tự tăng phiên bản → chờ build và đăng lên GitHub Releases.

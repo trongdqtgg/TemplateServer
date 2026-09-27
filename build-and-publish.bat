@@ -29,17 +29,33 @@ if not errorlevel 1 (
 )
 
 rem Token GitHub: KHONG ghi truc tiep vao file nay.
-rem Lay tu bien moi truong GH_TOKEN, hoac tu file gh-token.txt nam canh file nay
-rem (file gh-token.txt chi co 1 dong la token, da duoc loai khoi git trong .gitignore).
+rem Thu tu lay token: bien moi truong GH_TOKEN -> file gh-token.txt -> hoi nhap tai day.
+set "SAVETOKEN="
 if "%GH_TOKEN%"=="" if exist gh-token.txt set /p GH_TOKEN=<gh-token.txt
-if "%GH_TOKEN%"=="" (
-  echo LOI: Chua co GitHub token.
-  echo Tao file gh-token.txt canh file nay, dan token vao dong dau tien roi luu lai.
-  echo Token can quyen "Contents: Read and write" tren kho phat hanh.
-  echo.
-  pause
-  exit /b 1
-)
+if "%GH_TOKEN%"=="" call :asktoken
+if "%GH_TOKEN%"=="" goto notoken
+
+:checktoken
+echo.
+echo Dang kiem tra token voi GitHub...
+node scripts\check-token.js
+if not errorlevel 1 goto tokenok
+echo.
+choice /c YN /m "Nhap token khac"
+if errorlevel 2 goto stop
+set "GH_TOKEN="
+call :asktoken
+if "%GH_TOKEN%"=="" goto notoken
+goto checktoken
+
+:tokenok
+if not defined SAVETOKEN goto tokendone
+choice /c YN /m "Luu token vao gh-token.txt de lan sau khong phai nhap lai"
+if errorlevel 2 goto tokendone
+>gh-token.txt echo %GH_TOKEN%
+echo Da luu vao gh-token.txt. KHONG gui file nay cho ai, KHONG dua len GitHub.
+:tokendone
+echo.
 
 for /f "delims=" %%v in ('node -p "require('./package.json').version"') do set CURVER=%%v
 echo Phien ban hien tai trong package.json: %CURVER%
@@ -94,3 +110,28 @@ echo   File cai dat: dist\May-chu-mau-Setup-%NEWVER%.exe
 echo ===============================================
 echo.
 pause
+exit /b 0
+
+rem ---------- Cac doan xu ly phu ----------
+:asktoken
+echo.
+echo Dan GitHub token vao day roi bam Enter.
+echo ^(Chuot phai hoac Ctrl+V de dan. Ky tu bi an khi go - day la binh thuong.^)
+for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "$s = Read-Host 'Token' -AsSecureString; ([Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))).Trim()"`) do set "GH_TOKEN=%%t"
+if not "%GH_TOKEN%"=="" set "SAVETOKEN=1"
+goto :eof
+
+:notoken
+echo.
+echo LOI: Chua nhap GitHub token.
+echo Tao token tai: GitHub ^> Settings ^> Developer settings ^> Personal access tokens ^> Fine-grained tokens
+echo Chon dung kho phat hanh, cap quyen "Contents: Read and write".
+echo.
+pause
+exit /b 1
+
+:stop
+echo.
+echo Da dung, chua phat hanh gi.
+pause
+exit /b 1
