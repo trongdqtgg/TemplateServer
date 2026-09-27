@@ -35,20 +35,6 @@ if "%GH_TOKEN%"=="" if exist gh-token.txt set /p GH_TOKEN=<gh-token.txt
 if "%GH_TOKEN%"=="" call :asktoken
 if "%GH_TOKEN%"=="" goto notoken
 
-:checktoken
-echo.
-echo Dang kiem tra token voi GitHub...
-node scripts\check-token.js
-if not errorlevel 1 goto tokenok
-echo.
-choice /c YN /m "Nhap token khac"
-if errorlevel 2 goto stop
-set "GH_TOKEN="
-call :asktoken
-if "%GH_TOKEN%"=="" goto notoken
-goto checktoken
-
-:tokenok
 if not defined SAVETOKEN goto tokendone
 choice /c YN /m "Luu token vao gh-token.txt de lan sau khong phai nhap lai"
 if errorlevel 2 goto tokendone
@@ -127,11 +113,5 @@ echo LOI: Chua nhap GitHub token.
 echo Tao token tai: GitHub ^> Settings ^> Developer settings ^> Personal access tokens ^> Fine-grained tokens
 echo Chon dung kho phat hanh, cap quyen "Contents: Read and write".
 echo.
-pause
-exit /b 1
-
-:stop
-echo.
-echo Da dung, chua phat hanh gi.
 pause
 exit /b 1
