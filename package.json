@@ -59,8 +59,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "TEN_TAI_KHOAN_GITHUB",
-        "repo": "form-mau-server",
+        "owner": "trongdqtgg",
+        "repo": "TemplateServer",
         "releaseType": "release"
       }
     ]
