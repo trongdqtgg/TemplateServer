@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quản lý mẫu điền form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F3F6F5; --surface: #FFFFFF; --ink: #1C2B33; --muted: #5F6F76;
+    --accent: #1E6B5C; --accent-soft: #E1EFEA; --danger: #A23B3B; --line: #D6DFDC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 'Be Vietnam Pro', system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px;
+           border-bottom: 1px solid var(--line); background: var(--surface); }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  main { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 58px); }
+  aside { border-right: 1px solid var(--line); padding: 16px; background: var(--surface); }
+  #editor { padding: 24px 32px; max-width: 920px; }
+  input, textarea, button { font: inherit; color: inherit; }
+  input[type=text], input[type=password], input[type=search], textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  textarea { min-height: 220px; resize: vertical; line-height: 1.6; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--danger); border-color: currentColor; }
+  .group { margin-top: 20px; }
+  .group h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  .item { display: block; width: 100%; text-align: left; border: none; border-left: 3px solid transparent;
+          border-radius: 0; padding: 8px 10px; background: none; }
+  .item:hover { background: var(--paper); }
+  .item.active { border-left-color: var(--accent); background: var(--accent-soft); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 500; color: var(--accent); border: 1px solid currentColor;
+         border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; }
+  .banner { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 12px; margin-bottom: 8px; font-size: 14px; }
+  label.check { display: flex; gap: 8px; align-items: center; margin-top: 16px; font-size: 14px; }
+  .share { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .none { font-size: 13px; color: var(--muted); }
+  .sel { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 13px; font-weight: 600; color: var(--muted); }
+  td:first-child { width: 40%; }
+  label.f { display: block; font-size: 13px; font-weight: 500; margin: 16px 0 4px; }
+  .empty { color: var(--muted); max-width: 60ch; margin-top: 32px; }
+  #login { max-width: 380px; margin: 12vh auto; padding: 28px; background: var(--surface);
+           border: 1px solid var(--line); border-radius: 8px; }
+  .msg { min-height: 20px; color: var(--danger); font-size: 13px; margin-top: 10px; }
+  a { color: var(--accent); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink);
+           color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 14px; }
+  @media (max-width: 720px) {
+    main { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--line); }
+    #editor { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login" hidden>
+  <h1>Quản lý mẫu điền form</h1>
+  <label class="f" for="phone">Số điện thoại của bạn</label>
+  <input type="text" id="phone" inputmode="tel" autocomplete="tel">
+  <div class="row"><button class="primary" id="loginBtn">Mở mẫu của tôi</button></div>
+  <div class="msg" id="loginMsg" role="alert"></div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Quản lý mẫu điền form</h1>
+    <div class="row" style="margin:0;align-items:center"><span class="sel" id="who"></span><button id="logout">Đổi số điện thoại</button></div>
+  </header>
+  <main>
+    <aside>
+      <input type="search" id="q" placeholder="Tìm mẫu" aria-label="Tìm mẫu">
+      <div class="row"><button class="primary" id="newText">Tạo mẫu văn bản</button></div>
+      <div id="list"></div>
+    </aside>
+    <section id="editor"></section>
+  </main>
+</div>
+
+<script>
+let PHONE = localStorage.getItem('phone') || '';
+let templates = [];
+let currentId = null;
+let isAdmin = false;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function normalizePhone(p) {
+  let d = String(p || '').replace(/[\s.\-()]/g, '');
+  if (d.startsWith('+84')) d = '0' + d.slice(3);
+  else if (/^84\d{9,10}$/.test(d)) d = '0' + d.slice(2);
+  return /^0\d{9,10}$/.test(d) ? d : '';
+}
+
+async function api(method, path = '', body) {
+  const r = await fetch('/api/templates' + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Phone': PHONE },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = r.status === 204 ? null : await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Lỗi ' + r.status);
+  return data;
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+function showLogin(msg) {
+  $('#app').hidden = true; $('#login').hidden = false;
+  $('#phone').value = PHONE;
+  $('#loginMsg').textContent = msg || '';
+  $('#phone').focus();
+}
+
+async function start() {
+  try {
+    const me = await fetch('/api/me', { headers: { 'X-Phone': PHONE } }).then(r => r.json());
+    if (me.error) throw new Error(me.error);
+    isAdmin = me.isAdmin;
+    templates = await api('GET');
+    localStorage.setItem('phone', PHONE);
+    $('#login').hidden = true; $('#app').hidden = false;
+    $('#who').textContent = 'SĐT: ' + PHONE + (isAdmin ? ' (quản trị)' : '');
+    renderList(); renderEditor();
+  } catch (e) {
+    showLogin(e.message);
+  }
+}
+
+$('#loginBtn').onclick = () => {
+  const p = normalizePhone($('#phone').value);
+  if (!p) return ($('#loginMsg').textContent = 'Số điện thoại không hợp lệ.');
+  PHONE = p; currentId = null;
+  start();
+};
+$('#phone').onkeydown = e => { if (e.key === 'Enter') $('#loginBtn').click(); };
+$('#logout').onclick = () => {
+  localStorage.removeItem('phone'); PHONE = ''; templates = []; currentId = null;
+  showLogin();
+};
+$('#q').oninput = renderList;
+$('#newText').onclick = () => {
+  currentId = null; renderList();
+  renderEditor({ type: 'text', name: '', text: '' });
+  $('#name').focus();
+};
+
+// Thứ tự: mẫu của tôi, mẫu được chia sẻ, mẫu dùng chung
+const rank = t => t.shared ? 2 : t.sharedBy ? 1 : 0;
+const tagOf = t => t.shared ? '<span class="tag">Dùng chung</span>'
+  : t.sharedBy ? `<span class="tag">Từ ${esc(t.sharedBy)}</span>`
+  : (t.sharedWith || []).length ? `<span class="tag">Đã chia sẻ ${t.sharedWith.length}</span>` : '';
+
+function renderList() {
+  const q = $('#q').value.toLowerCase();
+  const groups = [['form', 'Mẫu form'], ['macro', 'Chuỗi thao tác'], ['text', 'Mẫu văn bản']];
+  $('#list').innerHTML = groups.map(([type, title]) => {
+    const items = templates
+      .filter(t => t.type === type && t.name.toLowerCase().includes(q))
+      .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'vi'));
+    const rows = items.map(t => `
+      <button class="item ${t.id === currentId ? 'active' : ''}" data-id="${t.id}">
+        ${esc(t.name)}${tagOf(t)}
+        ${t.type !== 'text' ? `<div class="sel">${esc(t.site)}</div>` : ''}
+      </button>`).join('');
+    return `<div class="group"><h2>${title} (${items.length})</h2>${rows || '<div class="none">Chưa có mẫu</div>'}</div>`;
+  }).join('');
+  $('#list').querySelectorAll('.item').forEach(b => b.onclick = () => {
+    currentId = b.dataset.id; renderList(); renderEditor();
+  });
+}
+
+function renderEditor(draft) {
+  const box = $('#editor');
+  const t = draft || templates.find(x => x.id === currentId);
+  if (!t) {
+    box.innerHTML = `<p class="empty">Chọn một mẫu bên trái để sửa.<br><br>
+      Mẫu form và chuỗi thao tác được tạo ngay trên trang form: Ctrl + click để mở menu,
+      chọn "Lưu form thành mẫu" hoặc "Ghi thao tác". Sau đó vào đây nhân bản và sửa giá trị
+      để có các mẫu khác (khám sức khỏe, viêm họng, tái khám…).</p>`;
+    return;
+  }
+
+  const readOnly = !!t.id && !t.canEdit;
+  let html = !readOnly ? ''
+    : t.sharedBy
+      ? `<div class="banner">Mẫu này do SĐT ${esc(t.sharedBy)} chia sẻ cho bạn. Bạn dùng được nhưng không sửa được.
+          Bấm "Sao chép về mẫu của tôi" để chỉnh theo ý bạn, hoặc "Bỏ chia sẻ" nếu không cần nữa.</div>`
+      : `<div class="banner">Đây là mẫu dùng chung, chỉ quản trị viên được sửa. Bấm "Sao chép về mẫu của tôi" để chỉnh theo ý bạn.</div>`;
+  html += `<label class="f" for="name">Tên mẫu</label>
+    <input type="text" id="name" value="${esc(t.name)}">`;
+
+  const valueCell = (v, label) => typeof v === 'boolean'
+    ? `<input type="checkbox" class="v" ${v ? 'checked' : ''} aria-label="Đánh dấu ${esc(label)}">`
+    : `<input type="text" class="v" value="${esc(Array.isArray(v) ? v.join(', ') : v)}" aria-label="${esc(label)}">`;
+
+  if (t.type === 'macro') {
+    html += `<label class="f">Trang áp dụng</label><div class="sel">${esc(t.site)}</div>
+      <p class="sel" style="margin-top:8px">Các bước chạy từ trên xuống. Dùng nút lên/xuống để đổi thứ tự.</p>
+      <table><thead><tr><th>Bước</th><th>Giá trị điền</th><th></th></tr></thead><tbody>
+      ${t.steps.map((st, i) => `<tr data-i="${i}">
+        <td>${st.action === 'click' ? 'Bấm' : 'Điền'} "${esc(st.label)}"<div class="sel">${esc(st.selector)}</div></td>
+        <td>${st.action === 'set' ? valueCell(st.value, st.label) : '<span class="sel">(bấm nút)</span>'}</td>
+        <td style="white-space:nowrap"><button class="up" aria-label="Lên">↑</button> <button class="down" aria-label="Xuống">↓</button> <button class="danger rm">Bỏ</button></td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } else if (t.type === 'text') {
+    html += `<label class="f" for="text">Nội dung (chèn vào ô đang bấm chuột phải)</label>
+      <textarea id="text">${esc(t.text)}</textarea>`;
+  } else {
+    html += `<label class="f">Trang áp dụng</label><div class="sel">${esc(t.site)}</div>
+      <table><thead><tr><th>Ô trên form</th><th>Giá trị điền</th><th></th></tr></thead><tbody>
+      ${t.fields.map((f, i) => `<tr data-i="${i}">
+        <td>${esc(f.label)}<div class="sel">${esc(f.selector)}</div></td>
+        <td>${valueCell(f.value, f.label)}</td>
+        <td><button class="danger rm">Bỏ ô</button></td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  }
+
+  if (isAdmin && !readOnly) {
+    html += `<label class="check"><input type="checkbox" id="shared" ${t.shared ? 'checked' : ''}>
+      Dùng chung cho mọi người (ai cũng dùng được, chỉ quản trị viên sửa)</label>`;
+  }
+  html += readOnly
+    ? `<div class="row"><button class="primary" id="dup">Sao chép về mẫu của tôi</button>
+        ${t.sharedBy ? '<button class="danger" id="leave">Bỏ chia sẻ</button>' : ''}</div>`
+    : `<div class="row">
+        <button class="primary" id="save">Lưu mẫu</button>
+        ${t.id ? '<button id="dup">Nhân bản thành mẫu riêng</button><button class="danger" id="del">Xóa mẫu</button>' : ''}
+      </div>`;
+
+  // Chủ mẫu riêng: chia sẻ cho SĐT khác
+  if (t.id && t.mine && !t.shared) {
+    const people = t.sharedWith || [];
+    html += `<div class="share">
+      <h2 style="font-size:16px;margin:0">Chia sẻ cho người khác</h2>
+      <p class="sel" style="margin:4px 0 0">Nhập số điện thoại, nhiều số thì cách nhau bằng dấu phẩy.
+        Người nhận tự thấy mẫu này, chỉ dùng được, không sửa được. Bạn sửa mẫu thì họ thấy bản mới ngay.</p>
+      <div class="row">
+        <input type="text" id="sharePhones" inputmode="tel" placeholder="0912 345 678, 0987 654 321"
+               aria-label="Số điện thoại người nhận" style="flex:1;min-width:200px">
+        <button class="primary" id="shareBtn">Chia sẻ</button>
+      </div>
+      <div class="msg" id="shareMsg" role="alert"></div>
+      ${people.length ? `<table><thead><tr><th>Đang chia sẻ cho (${people.length})</th><th></th></tr></thead><tbody>
+        ${people.map(ph => `<tr><td>${esc(ph)}</td><td style="text-align:right">
+          <button class="danger revoke" data-phone="${esc(ph)}">Thu hồi</button></td></tr>`).join('')}
+        </tbody></table>` : '<p class="sel">Chưa chia sẻ cho ai.</p>'}
+    </div>`;
+  }
+  box.innerHTML = html;
+  if (readOnly) {
+    box.querySelectorAll('input, textarea').forEach(el => { el.disabled = true; });
+    box.querySelectorAll('.rm, .up, .down').forEach(b => b.remove());
+  }
+
+  box.querySelectorAll('.rm').forEach(b => b.onclick = () => b.closest('tr').remove());
+  box.querySelectorAll('.up').forEach(b => b.onclick = () => {
+    const tr = b.closest('tr');
+    if (tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling);
+  });
+  box.querySelectorAll('.down').forEach(b => b.onclick = () => {
+    const tr = b.closest('tr');
+    if (tr.nextElementSibling) tr.parentNode.insertBefore(tr.nextElementSibling, tr);
+  });
+
+  const readValue = (tr, orig) => {
+    const input = tr.querySelector('.v');
+    if (!input) return orig;
+    return input.type === 'checkbox' ? input.checked
+      : Array.isArray(orig) ? input.value.split(',').map(s => s.trim()).filter(Boolean)
+      : input.value;
+  };
+
+  const collect = () => {
+    const out = structuredClone(t);
+    ['id', 'updatedAt', 'updatedBy', 'phone', 'canEdit', 'mine', 'sharedBy', 'sharedWith'].forEach(k => delete out[k]);
+    out.shared = $('#shared') ? $('#shared').checked : false;
+    out.name = $('#name').value.trim();
+    const rows = [...box.querySelectorAll('tbody tr[data-i]')];
+    if (t.type === 'text') {
+      out.text = $('#text').value;
+    } else if (t.type === 'macro') {
+      out.steps = rows.map(tr => {
+        const st = t.steps[+tr.dataset.i];
+        return st.action === 'set' ? { ...st, value: readValue(tr, st.value) } : st;
+      });
+    } else {
+      out.fields = rows.map(tr => {
+        const f = t.fields[+tr.dataset.i];
+        return { ...f, value: readValue(tr, f.value) };
+      });
+    }
+    return out;
+  };
+
+  if ($('#save')) $('#save').onclick = async () => {
+    const data = collect();
+    if (!data.name) return toast('Nhập tên mẫu trước khi lưu');
+    try {
+      if (t.id) {
+        const saved = await api('PUT', '/' + t.id, data);
+        templates[templates.findIndex(x => x.id === t.id)] = saved;
+      } else {
+        const saved = await api('POST', '', data);
+        templates.push(saved); currentId = saved.id;
+      }
+      renderList(); renderEditor(); toast('Đã lưu mẫu');
+    } catch (e) { toast(e.message); }
+  };
+
+  if (!t.id) return;
+
+  const replaceLocal = saved => { templates[templates.findIndex(x => x.id === saved.id)] = saved; };
+
+  if ($('#shareBtn')) {
+    $('#sharePhones').onkeydown = e => { if (e.key === 'Enter') $('#shareBtn').click(); };
+    $('#shareBtn').onclick = async () => {
+      const phones = $('#sharePhones').value.trim();
+      if (!phones) return ($('#shareMsg').textContent = 'Nhập ít nhất một số điện thoại.');
+      try {
+        const r = await api('POST', `/${t.id}/share`, { phones });
+        replaceLocal(r.template);
+        renderList(); renderEditor();
+        if (r.added.length) toast(`Đã chia sẻ cho ${r.added.join(', ')}`);
+        const notes = [];
+        if (r.invalid.length) notes.push('Không chia sẻ được: ' + r.invalid.join(', ') + '.');
+        if (!r.added.length && !r.invalid.length) notes.push('Các số này đã được chia sẻ từ trước.');
+        $('#shareMsg').textContent = notes.join(' ');
+      } catch (e) { $('#shareMsg').textContent = e.message; }
+    };
+    box.querySelectorAll('.revoke').forEach(b => b.onclick = async () => {
+      const ph = b.dataset.phone;
+      if (!confirm(`Thu hồi chia sẻ với ${ph}?`)) return;
+      try {
+        const r = await api('DELETE', `/${t.id}/share/${encodeURIComponent(ph)}`);
+        replaceLocal(r.template);
+        renderList(); renderEditor(); toast(`Đã thu hồi với ${ph}`);
+      } catch (e) { toast(e.message); }
+    });
+  }
+
+  if ($('#leave')) $('#leave').onclick = async () => {
+    if (!confirm(`Bỏ mẫu "${t.name}" khỏi danh sách của bạn? Muốn dùng lại thì nhờ ${t.sharedBy} chia sẻ lại.`)) return;
+    try {
+      await api('DELETE', `/${t.id}/share/${encodeURIComponent(PHONE)}`);
+      templates = templates.filter(x => x.id !== t.id); currentId = null;
+      renderList(); renderEditor(); toast('Đã bỏ chia sẻ');
+    } catch (e) { toast(e.message); }
+  };
+
+  $('#dup').onclick = async () => {
+    const data = collect();
+    data.name = (data.name || t.name) + ' (bản sao)';
+    data.shared = false; // bản sao luôn là mẫu riêng
+    try {
+      const saved = await api('POST', '', data);
+      templates.push(saved); currentId = saved.id;
+      renderList(); renderEditor(); toast(readOnly ? 'Đã sao chép về mẫu của bạn' : 'Đã nhân bản mẫu');
+      $('#name').select();
+    } catch (e) { toast(e.message); }
+  };
+
+  if ($('#del')) $('#del').onclick = async () => {
+    if (!confirm(`Xóa mẫu "${t.name}"?`)) return;
+    try {
+      await api('DELETE', '/' + t.id);
+      templates = templates.filter(x => x.id !== t.id); currentId = null;
+      renderList(); renderEditor(); toast('Đã xóa mẫu');
+    } catch (e) { toast(e.message); }
+  };
+}
+
+PHONE ? start() : showLogin();
+</script>
+</body>
+</html>

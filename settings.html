@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Cài đặt máy chủ mẫu</title>
+<style>
+  :root {
+    --paper: #F3F6F5; --surface: #FFFFFF; --ink: #1C2B33; --muted: #5F6F76;
+    --accent: #1E6B5C; --accent-soft: #E1EFEA; --danger: #A23B3B; --danger-soft: #F6E3E3; --line: #D6DFDC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+  header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  header img { width: 36px; height: 36px; }
+  h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  .pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+  .pill.bad { background: var(--danger-soft); color: var(--danger); }
+  main { padding: 4px 20px 16px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  h2 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin-top: 10px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+  input[type=text], input[type=number], textarea { width: 100%; margin-top: 4px; padding: 7px 9px; font: inherit;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: inherit; }
+  textarea { min-height: 54px; resize: vertical; }
+  input[type=number] { width: 120px; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
+  .check input { margin-top: 3px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .6; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .link { display: flex; gap: 8px; margin-top: 6px; }
+  .link code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 7px 9px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px; font: 12px/1.6 Consolas, monospace; }
+  footer { position: sticky; bottom: 0; display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap;
+    padding: 12px 20px; background: var(--surface); border-top: 1px solid var(--line); }
+  #msg { margin-right: auto; font-size: 13px; }
+  #msg.err { color: var(--danger); } #msg.ok { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <img src="build/icon.png" alt="">
+  <div>
+    <h1>Máy chủ mẫu điền form</h1>
+    <span class="pill" id="state">Đang tải…</span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>Kết nối</h2>
+    <label for="port">Cổng máy chủ</label>
+    <input type="number" id="port" min="1024" max="65535">
+    <p class="hint">Tunnel (cloudflared, ngrok) trỏ vào cổng này, vd <code>cloudflared tunnel --url http://localhost:8787</code>.</p>
+
+    <label for="publicUrl">Địa chỉ tunnel (không bắt buộc)</label>
+    <input type="text" id="publicUrl" placeholder="https://ten-cua-ban.trycloudflare.com" spellcheck="false">
+    <p class="hint">Điền để lấy link cài userscript gửi cho các máy. Userscript cài từ link này sẽ tự cập nhật khi máy chủ lên bản mới.</p>
+    <div class="link" id="usBox" hidden>
+      <code id="usLink"></code><button id="copyUs" type="button">Sao chép link</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Người dùng</h2>
+    <label for="adminPhones">SĐT quản trị viên</label>
+    <textarea id="adminPhones" placeholder="0900000001" spellcheck="false"></textarea>
+    <p class="hint">Được tạo, sửa, xóa mẫu dùng chung. Nhiều số cách nhau bằng dấu phẩy hoặc xuống dòng.</p>
+
+    <label for="allowedPhones">Chỉ cho phép các SĐT này</label>
+    <textarea id="allowedPhones" placeholder="Để trống: mọi SĐT đều dùng được" spellcheck="false"></textarea>
+    <p class="hint">Nên điền vì tunnel mở ra Internet. Quản trị viên luôn được phép.</p>
+  </section>
+
+  <section>
+    <h2>Userscript</h2>
+    <label for="match">Trang áp dụng (@match)</label>
+    <input type="text" id="match" placeholder="*://*/*" spellcheck="false">
+    <p class="hint">Vd <code>https://his.benhvien.vn/*</code>. Nhiều trang cách nhau bằng dấu phẩy.</p>
+  </section>
+
+  <section>
+    <h2>Chạy nền và cập nhật</h2>
+    <label class="check"><input type="checkbox" id="openAtLogin">
+      <span>Tự chạy khi mở máy<br><span class="hint">Chạy im lặng dưới khay hệ thống, không hiện cửa sổ.</span></span></label>
+    <label class="check"><input type="checkbox" id="autoUpdate">
+      <span>Tự cài bản cập nhật<br><span class="hint">Bản mới được kiểm tra khi mở app và mỗi 4 tiếng. Khi cài, máy chủ dừng vài giây rồi tự chạy lại.</span></span></label>
+    <div class="row">
+      <span id="upd" class="hint" style="margin:0"></span>
+      <button id="checkUpd" type="button">Kiểm tra cập nhật</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span id="msg" role="status"></span>
+  <button id="openData" type="button">Thư mục dữ liệu</button>
+  <button id="openManager" type="button">Trang quản lý mẫu</button>
+  <button id="save" type="button" class="primary">Lưu và áp dụng</button>
+</footer>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const FIELDS = ['port', 'publicUrl', 'adminPhones', 'allowedPhones', 'match'];
+  const CHECKS = ['openAtLogin', 'autoUpdate'];
+
+  function showStatus(s) {
+    const st = $('state');
+    st.textContent = s.running ? `Đang chạy · cổng ${s.port} · bản ${s.version}` : `Không chạy: ${s.error || 'đang khởi động'}`;
+    st.classList.toggle('bad', !s.running);
+    $('upd').textContent = s.updState;
+    $('checkUpd').textContent = s.updReady ? `Cài bản ${s.updReady} ngay` : 'Kiểm tra cập nhật';
+    $('checkUpd').disabled = !s.packaged;
+    $('openManager').disabled = !s.running;
+  }
+  function showLink() {
+    const url = $('publicUrl').value.trim().replace(/\/+$/, '');
+    $('usBox').hidden = !url;
+    $('usLink').textContent = url ? `${url}/mau-dien-form.user.js` : '';
+  }
+  function say(text, kind) { $('msg').textContent = text; $('msg').className = kind || ''; }
+
+  async function load() {
+    const { cfg, status } = await api.get();
+    FIELDS.forEach(k => { $(k).value = cfg[k] ?? ''; });
+    CHECKS.forEach(k => { $(k).checked = !!cfg[k]; });
+    showLink(); showStatus(status);
+  }
+
+  $('publicUrl').addEventListener('input', showLink);
+  $('copyUs').onclick = async () => { await api.copy($('usLink').textContent); say('Đã sao chép link cài userscript', 'ok'); };
+  $('openData').onclick = () => api.open('data');
+  $('openManager').onclick = () => api.open('manager');
+  $('checkUpd').onclick = async () => { say('Đang kiểm tra cập nhật…'); await api.checkUpdate(); say(''); };
+  $('save').onclick = async () => {
+    const next = {};
+    FIELDS.forEach(k => { next[k] = $(k).value; });
+    CHECKS.forEach(k => { next[k] = $(k).checked; });
+    $('save').disabled = true; say('Đang lưu…');
+    try {
+      const { status } = await api.save(next);
+      showStatus(status);
+      say(status.running ? 'Đã lưu và áp dụng' : 'Đã lưu, nhưng máy chủ chưa chạy được', status.running ? 'ok' : 'err');
+    } catch (e) {
+      say(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''), 'err');
+    } finally { $('save').disabled = false; }
+  };
+  api.onStatus(showStatus);
+  load();
+</script>
+</body>
+</html>

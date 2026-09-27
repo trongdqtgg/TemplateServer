@@ -1,0 +1,68 @@
+{
+  "name": "form-mau-server",
+  "productName": "May chu mau dien form",
+  "version": "1.0.0",
+  "description": "Máy chủ lưu mẫu điền form, chạy ẩn dưới khay hệ thống, tự cập nhật qua GitHub Releases",
+  "main": "main.js",
+  "private": true,
+  "author": "Form Mau",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server.js",
+    "dist:win": "electron-builder --win --x64",
+    "dist:win:publish": "electron-builder --win --x64 --publish always"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "vn.formmau.server",
+    "productName": "May chu mau dien form",
+    "copyright": "Form Mau",
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "settings.html",
+      "package.json",
+      "public/**",
+      "userscript/**",
+      "assets/**",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico",
+      "artifactName": "May-chu-mau-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "May chu mau dien form",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "TEN_TAI_KHOAN_GITHUB",
+        "repo": "form-mau-server",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
