@@ -73,7 +73,7 @@
 <div id="app" hidden>
   <header>
     <h1>Quản lý mẫu điền form</h1>
-    <div class="row" style="margin:0;align-items:center"><a class="sel" href="/mau-dien-form.user.js" title="Mở bằng trình duyệt đã cài Tampermonkey để cài hoặc cập nhật userscript">Cài / cập nhật userscript</a><span class="sel" id="who"></span><button id="logout">Đổi số điện thoại</button></div>
+    <div class="row" style="margin:0;align-items:center"><a class="sel" href="/caidat" title="Mở bằng trình duyệt đã cài Tampermonkey để cài hoặc cập nhật userscript">Cài / cập nhật userscript</a><span class="sel" id="who"></span><button id="logout">Đổi số điện thoại</button></div>
   </header>
   <main>
     <aside>
@@ -189,7 +189,7 @@ function renderEditor(draft) {
   const t = draft || templates.find(x => x.id === currentId);
   if (!t) {
     box.innerHTML = `<p class="empty">Chọn một mẫu bên trái để sửa.<br><br>
-      Mẫu form và chuỗi thao tác được tạo ngay trên trang form: Ctrl + click để mở menu,
+      Mẫu form và chuỗi thao tác được tạo ngay trên trang form: Ctrl + chuột phải để mở menu,
       chọn "Lưu form thành mẫu" hoặc "Ghi thao tác". Sau đó vào đây nhân bản và sửa giá trị
       để có các mẫu khác (khám sức khỏe, viêm họng, tái khám…).</p>`;
     return;

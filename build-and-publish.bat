@@ -29,18 +29,16 @@ if not errorlevel 1 (
 )
 
 rem Token GitHub: KHONG ghi truc tiep vao file nay.
-rem Thu tu lay token: bien moi truong GH_TOKEN -> file gh-token.txt -> hoi nhap tai day.
+rem Lay token tu file gh-token.txt, chua co thi hoi nhap tai day.
+rem Bo qua bien GH_TOKEN co san tren may (co the la token cu).
+set "GH_TOKEN="
 set "SAVETOKEN="
-if "%GH_TOKEN%"=="" if exist gh-token.txt set /p GH_TOKEN=<gh-token.txt
+if exist gh-token.txt call :readtokenfile
 if "%GH_TOKEN%"=="" call :asktoken
 if "%GH_TOKEN%"=="" goto notoken
+call :showtoken
 
-if not defined SAVETOKEN goto tokendone
-choice /c YN /m "Luu token vao gh-token.txt de lan sau khong phai nhap lai"
-if errorlevel 2 goto tokendone
->gh-token.txt echo %GH_TOKEN%
-echo Da luu vao gh-token.txt. KHONG gui file nay cho ai, KHONG dua len GitHub.
-:tokendone
+call :savetoken
 echo.
 
 for /f "delims=" %%v in ('node -p "require('./package.json').version"') do set CURVER=%%v
@@ -74,17 +72,33 @@ if errorlevel 1 (
   exit /b 1
 )
 
+:publish
 echo.
 echo [2/2] Dang build va phat hanh len GitHub Releases...
 call npm run dist:win:publish
-if errorlevel 1 (
-  echo.
-  echo LOI: build hoac phat hanh that bai. Xem chi tiet loi ben tren.
-  echo Loi thuong gap: token het han / sai quyen, hoac phien ban %NEWVER% da ton tai tren GitHub.
-  echo.
-  pause
-  exit /b 1
-)
+if not errorlevel 1 goto published
+echo.
+echo LOI: build hoac phat hanh that bai. Xem chi tiet loi ben tren.
+echo  - "401 Bad credentials": token sai, het han hoac da bi thu hoi.
+echo  - "403" / "404": token chua duoc cap quyen "Contents: Read and write" cho dung kho,
+echo    hoac ten kho trong package.json chua dung.
+echo.
+choice /c YN /m "Nhap token moi va phat hanh lai"
+if errorlevel 2 goto failed
+if exist gh-token.txt del gh-token.txt
+set "GH_TOKEN="
+call :asktoken
+if "%GH_TOKEN%"=="" goto notoken
+call :showtoken
+call :savetoken
+goto publish
+
+:failed
+echo.
+pause
+exit /b 1
+
+:published
 
 echo.
 echo ===============================================
@@ -99,11 +113,32 @@ pause
 exit /b 0
 
 rem ---------- Cac doan xu ly phu ----------
+:readtokenfile
+rem Doc bang PowerShell de bo ky tu an (BOM khi luu bang Notepad), dau cach, xuong dong, dau ngoac kep
+for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "$c = Get-Content -Raw -LiteralPath 'gh-token.txt'; if ($c) { $c.Trim().Trim([char]0xFEFF, [char]34, [char]39).Trim() }"`) do set "GH_TOKEN=%%t"
+goto :eof
+
+:showtoken
+rem Chi hien 4 ky tu cuoi de doi chieu voi token tren GitHub, khong lo ca token
+for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "$t = $env:GH_TOKEN; if ($t.Length -gt 4) { $t.Substring($t.Length - 4) } else { '?' }"`) do set "TOKTAIL=%%t"
+echo Dung token ket thuc bang ...%TOKTAIL%
+goto :eof
+
+:savetoken
+if not defined SAVETOKEN goto :eof
+set "SAVETOKEN="
+choice /c YN /m "Luu token vao gh-token.txt de lan sau khong phai nhap lai"
+if errorlevel 2 goto :eof
+rem Ghi dang ASCII, khong BOM
+powershell -NoProfile -Command "[IO.File]::WriteAllText('gh-token.txt', $env:GH_TOKEN, [Text.Encoding]::ASCII)"
+echo Da luu vao gh-token.txt. KHONG gui file nay cho ai, KHONG dua len GitHub.
+goto :eof
+
 :asktoken
 echo.
 echo Dan GitHub token vao day roi bam Enter.
 echo ^(Chuot phai hoac Ctrl+V de dan. Ky tu bi an khi go - day la binh thuong.^)
-for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "$s = Read-Host 'Token' -AsSecureString; ([Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))).Trim()"`) do set "GH_TOKEN=%%t"
+for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "$s = Read-Host 'Token' -AsSecureString; ([Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))).Trim().Trim([char]34, [char]39).Trim()"`) do set "GH_TOKEN=%%t"
 if not "%GH_TOKEN%"=="" set "SAVETOKEN=1"
 goto :eof
 

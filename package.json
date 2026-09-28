@@ -1,7 +1,7 @@
 {
   "name": "form-mau-server",
   "productName": "May chu mau dien form",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Máy chủ lưu mẫu điền form, chạy ẩn dưới khay hệ thống, tự cập nhật qua GitHub Releases",
   "main": "main.js",
   "private": true,
@@ -43,7 +43,14 @@
       "buildResources": "build"
     },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico",
       "artifactName": "May-chu-mau-Setup-${version}.${ext}"
     },

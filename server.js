@@ -99,8 +99,9 @@ function personalizeUserscript(src, origin, match) {
     .replace(/^\/\/ @match\s+.*$/m, matches.map(m => `// @match        ${m}`).join('\n'))
     .replace(/^\/\/ @connect\s+.*$/m, `// @connect      ${host}`)
     .replace(/^\/\/ @(updateURL|downloadURL)\s+.*\n/gm, '')
+    .replace(/^\/\/ Nên đổi @match.*\n/m, '') // ghi chú cho người tự cài tay, không cần nữa
     .replace(/^\/\/ ==\/UserScript==$/m,
-      `// @updateURL    ${origin}/mau-dien-form.user.js\n// @downloadURL  ${origin}/mau-dien-form.user.js\n// ==/UserScript==`);
+      `// @updateURL    ${origin}/caidat.user.js\n// @downloadURL  ${origin}/caidat.user.js\n// ==/UserScript==`);
 }
 
 /**
@@ -131,7 +132,14 @@ function startServer(opts = {}) {
     // Kiểm tra máy chủ còn sống (dùng cho ứng dụng khay hệ thống)
     if (req.method === 'GET' && p === '/health') return send(res, 200, { ok: true, version: VERSION });
     // Userscript đã điền sẵn địa chỉ máy chủ; Tampermonkey tự kiểm tra cập nhật qua @updateURL
-    if (req.method === 'GET' && p === '/mau-dien-form.user.js') {
+    // Link dễ nhớ để chia sẻ: /caidat (hoặc /caidat.js) chuyển sang /caidat.user.js,
+    // vì Tampermonkey chỉ hiện nút cài khi đường dẫn kết thúc bằng ".user.js"
+    if (req.method === 'GET' && ['/caidat', '/caidat/', '/caidat.js'].includes(p)) {
+      res.writeHead(302, { Location: '/caidat.user.js', 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+    // /mau-dien-form.user.js: giữ lại để các máy đã cài theo link cũ vẫn tự cập nhật được
+    if (req.method === 'GET' && (p === '/caidat.user.js' || p === '/mau-dien-form.user.js')) {
       const src = fs.readFileSync(USERSCRIPT, 'utf8');
       return send(res, 200, personalizeUserscript(src, originOf(req), MATCH), 'text/javascript; charset=utf-8');
     }
@@ -265,6 +273,6 @@ if (require.main === module) {
     console.log(`Dữ liệu mẫu: ${s.dataFile}`);
     console.log(s.allowedCount ? `Chỉ cho phép ${s.allowedCount} SĐT` : 'Mọi SĐT hợp lệ đều dùng được');
     console.log(s.admins.length ? `Quản trị viên mẫu dùng chung: ${s.admins.join(', ')}` : 'Chưa có quản trị viên (đặt ADMIN_PHONES để tạo mẫu dùng chung)');
-    console.log(`Cài userscript: http://localhost:${s.port}/mau-dien-form.user.js (qua tunnel thì thay bằng địa chỉ tunnel)`);
+    console.log(`Cài userscript: http://localhost:${s.port}/caidat (qua tunnel thì thay bằng địa chỉ tunnel)`);
   }).catch(e => { console.error(e.message); process.exit(1); });
 }

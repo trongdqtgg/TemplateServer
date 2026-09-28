@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Mẫu điền form (theo số điện thoại)
 // @namespace    kham-benh-filler
-// @version      12.1
-// @description  Alt + chuột phải: nhập SĐT. Ctrl + click: chọn mẫu điền form hoặc chuỗi thao tác đã ghi
+// @version      13.1
+// @description  Ctrl + chuột phải: mở menu mẫu (điền form, chạy chuỗi thao tác, lưu mẫu, đổi SĐT)
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
@@ -18,7 +18,7 @@
   // ===== CẤU HÌNH =====
   const SERVER = 'https://ten-tunnel-cua-ban.example.com'; // địa chỉ tunnel, không có "/" ở cuối
 
-  const VERSION = '12.1';
+  const VERSION = '13.1';
   // Trang Angular/React đổi đường dẫn mà không tải lại trang, nên tính lại mỗi lần dùng
   const siteNow = () => location.host + location.pathname;
   // Mẫu thuộc cùng website (khác đường dẫn vẫn hiện, xếp sau mẫu của đúng trang này)
@@ -62,7 +62,7 @@
   }
 
   const refresh = async () => {
-    if (!PHONE) throw new Error('Chưa nhập số điện thoại (Alt + chuột phải)');
+    if (!PHONE) throw new Error('Chưa nhập số điện thoại (Ctrl + chuột phải → Đổi SĐT)');
     templates = await request('GET');
   };
 
@@ -532,15 +532,41 @@
   let playing = null;   // đang phát lại
 
   // Tìm phần tử "bấm được" từ chỗ người dùng click
+  // Phần tử HTML gần nhất bao ngoài (hình vẽ SVG như <svg>, <path> không phải phần tử HTML)
+  function htmlHost(n) {
+    while (n && !(n instanceof HTMLElement)) n = n.parentElement;
+    return n;
+  }
+
   function clickTarget(t) {
     if (!(t instanceof Element)) return null;
     if (t.closest('input, select, textarea, option')) return null; // ô nhập: ghi qua sự kiện change
     const lab = t.closest('label');
     if (lab && (lab.control || lab.querySelector('input, select, textarea'))) return null;
-    let el = t.closest(CLICKABLE);
-    if (!el && getComputedStyle(t).cursor === 'pointer') el = t;
+    // Bấm trúng biểu tượng SVG bên trong nút: ghi lại chính cái nút bao ngoài
+    const svg = t.closest('svg');
+    const start = svg ? htmlHost(svg) : t;
+    if (!start) return null;
+    let el = start.closest(CLICKABLE);
+    // Không phải nút chuẩn: lấy phần tử gần nhất có con trỏ hình bàn tay
+    for (let n = start, i = 0; !el && n && i < 4; n = n.parentElement, i++) {
+      if (n !== document.body && getComputedStyle(n).cursor === 'pointer') el = n;
+    }
+    if (!el && svg) el = start;
     if (!el || el === document.body || el === document.documentElement) return null;
     return el;
+  }
+
+  // Tên biểu tượng trong nút không có chữ (vd "plus", "edit") để hiển thị bước dễ hiểu
+  function iconName(el) {
+    const svg = el.matches('svg') ? el : el.querySelector('svg');
+    const di = svg && svg.getAttribute('data-icon');
+    if (di) return di;
+    for (const n of [el, ...el.querySelectorAll('[class*="icon"]')]) {
+      const m = [...(n.classList || [])].map(c => c.match(/^(?:anticon|icon|fa|ms-Icon--)-?([\w-]+)$/)).find(x => x && x[1] !== 'spin');
+      if (m) return m[1];
+    }
+    return '';
   }
 
   // --- Ghi ô chọn ngày / danh sách chọn: không ghi từng cú bấm bên trong,
@@ -614,7 +640,9 @@
       toast('Không ghi nút lưu/gửi: bạn tự bấm sau khi kiểm tra');
       return;
     }
-    addStep({ action: 'click', selector: keyOf(el), label: text || el.tagName.toLowerCase(), text, tag: el.tagName });
+    const icon = text ? '' : iconName(el);
+    addStep({ action: 'click', selector: keyOf(el), label: text || (icon ? `biểu tượng ${icon}` : el.tagName.toLowerCase()),
+      text, tag: el.tagName });
   }, true);
 
   // Không đòi isTrusted ở đây: nhiều trang (select2, datepicker…) cập nhật ô bằng code
@@ -722,7 +750,9 @@
     if (el.focus) el.focus();
     el.dispatchEvent(new PointerEvent('pointerup', o));
     el.dispatchEvent(new MouseEvent('mouseup', o));
-    el.click();
+    // Hình vẽ SVG (<svg>, <path>) không có hàm click(): phát sự kiện click, sự kiện sẽ lan lên nút bao ngoài
+    if (typeof el.click === 'function') el.click();
+    else el.dispatchEvent(new MouseEvent('click', o));
   }
 
   async function playMacro(t) {
@@ -768,8 +798,8 @@
   let host = null;
   const closeMenu = () => { if (host) { host.remove(); host = null; } };
 
-  // Alt + chuột phải: nhập / đổi SĐT
-  // Ctrl + chuột trái: mở menu mẫu (trên macOS, Ctrl + click được hiểu là chuột phải nên bắt cả ở contextmenu)
+  // Phím tắt duy nhất: Ctrl + chuột phải để mở menu mẫu.
+  // Nhập / đổi SĐT nằm trong menu (nút "Đổi SĐT"); lần đầu chưa có SĐT thì menu tự hỏi.
   async function openFor(e) {
     const el = isTextLike(e.target) && !kindOf(e.target) ? e.target : null;
     let start = null, end = null;
@@ -780,23 +810,19 @@
   }
 
   document.addEventListener('contextmenu', e => {
+    if (!e.ctrlKey) return; // chuột phải thường: để trình duyệt / trang xử lý như bình thường
     if (host && e.composedPath().includes(host)) return;
-    if (e.altKey) { e.preventDefault(); e.stopPropagation(); closeMenu(); askPhone(); }
-    else if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); openFor(e); }
-  }, true);
-
-  document.addEventListener('click', e => {
-    if (!e.ctrlKey || e.button !== 0) return;
-    if (host && e.composedPath().includes(host)) return;
-    e.preventDefault();   // chặn Ctrl + click mở link sang tab mới
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     openFor(e);
   }, true);
 
+  // Trên máy Mac, Ctrl + chuột trái được hiểu là chuột phải
+  const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
   document.addEventListener('mousedown', e => {
     if (host && !e.composedPath().includes(host)) closeMenu();
-    // Ctrl + click để mở menu: không để trang mở danh sách chọn / lịch bên dưới
-    if (e.ctrlKey && e.button === 0 && !isOurUI(e)) e.stopPropagation();
+    // Ctrl + chuột phải để mở menu: không để trang bắt cú bấm này (vd bung danh sách chọn bên dưới)
+    const menuClick = e.ctrlKey && (e.button === 2 || (IS_MAC && e.button === 0));
+    if (menuClick && !isOurUI(e)) e.stopPropagation();
   }, true);
 
   function openMenu(x, y, target, clicked) {
@@ -881,7 +907,7 @@
       html += section('Chèn văn bản vào ô', texts, forms.length + macros.length);
       if (!items.length) {
         html = `<div class="note">${q ? 'Không có mẫu khớp.' : 'Chưa có mẫu cho trang này.'}` +
-          (target ? '' : ' Ctrl + click vào một ô nhập để thấy mẫu văn bản.') + '</div>';
+          (target ? '' : ' Ctrl + chuột phải vào một ô nhập để thấy mẫu văn bản.') + '</div>';
       }
       list.innerHTML = html;
       list.querySelectorAll('.i').forEach(d => {

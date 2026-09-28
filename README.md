@@ -44,7 +44,7 @@ Dữ liệu **không bị xóa** khi cập nhật hay gỡ cài đặt.
 ## B. Cài userscript cho các máy dùng
 
 1. Cài extension **Tampermonkey** (Chrome/Edge: bật **Chế độ nhà phát triển** trong `chrome://extensions`).
-2. Mở link `https://<địa-chỉ-tunnel>/mau-dien-form.user.js` (có nút sao chép trong Cài đặt, hoặc nút
+2. Mở link `https://<địa-chỉ-tunnel>/caidat` (có nút sao chép trong Cài đặt, hoặc nút
    "Cài / cập nhật userscript" trên trang quản lý) → Tampermonkey hiện trang cài → **Cài đặt**.
 
 Userscript cài theo cách này đã điền sẵn địa chỉ máy chủ và **tự cập nhật**: khi máy chủ lên bản mới
@@ -54,8 +54,7 @@ có userscript mới, Tampermonkey tự tải về (mặc định kiểm tra m�
 > Nếu địa chỉ tunnel thay đổi (link trycloudflare miễn phí đổi mỗi lần chạy lại), các máy phải cài lại
 > userscript từ link mới. Dùng named tunnel với tên miền cố định để tránh việc này.
 
-**Cách dùng**: Alt + chuột phải để nhập SĐT; Ctrl + click để mở menu mẫu (điền mẫu, chạy chuỗi thao tác,
-lưu mẫu, ghi thao tác, chẩn đoán ô bị lỗi).
+**Cách dùng**: chỉ một thao tác duy nhất là **Ctrl + chuột phải** để mở menu mẫu. Trong menu có: điền mẫu, chạy chuỗi thao tác, lưu mẫu, ghi thao tác, đổi SĐT, chẩn đoán ô bị lỗi. Lần đầu dùng, menu tự hỏi SĐT. Esc để dừng chuỗi thao tác đang chạy hoặc đóng menu.
 
 ---
 
